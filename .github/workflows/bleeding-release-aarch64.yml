@@ -1,0 +1,53 @@
+name: Bleeding Release AArch64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-aarch64:
+    name: Build and Upload (aarch64-unknown-linux-gnu)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set Rust toolchain to 1.87.0
+        uses: dtolnay/rust-toolchain@1.87.0
+
+      - name: Add aarch64 target
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+
+      - name: Cargo cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          path: ~/.cargo/registry
+
+      - name: Build for aarch64-unknown-linux-gnu
+        run: |
+          cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Collect all executables in tmp-bins
+        run: |
+          rm -rf tmp-bins
+          mkdir -p tmp-bins/bin
+
+          cp target/aarch64-unknown-linux-gnu/release/mooncake  tmp-bins/bin/ || true
+          cp target/aarch64-unknown-linux-gnu/release/moonrun   tmp-bins/bin/ || true
+          cp target/aarch64-unknown-linux-gnu/release/moonbuild tmp-bins/bin/ || true
+          cp target/aarch64-unknown-linux-gnu/release/moonutil  tmp-bins/bin/ || true
+          cp target/aarch64-unknown-linux-gnu/release/moon      tmp-bins/bin/ || true
+
+      - name: Package aarch64 binaries into tar.gz
+        run: |
+          tar czf moonbit-aarch64-unknown-linux-gnu.tar.gz -C tmp-bins .
+
+      - name: Upload `.tar.gz` as GitHub Actions artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: moonbit-aarch64-unknown-linux-gnu
+          path: moonbit-aarch64-unknown-linux-gnu.tar.gz
